@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username VARCHAR(32) NOT NULL UNIQUE,
+    password VARCHAR(62) NOT NULL
+)
+
+INSERT INTO users(username,password) VALUE(?,?)

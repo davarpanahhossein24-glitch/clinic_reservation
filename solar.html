@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+  <meta charset="UTF-8">
+  <title>منظومه شمسی 3D</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #000;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Three.js و OrbitControls -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/controls/OrbitControls.min.js"></script>
+
+<script>
+  // تنظیم صحنه و دوربین
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x000000);
+
+  const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+  camera.position.set(0, 30, 60);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  // کنترل موس
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+  // نورپردازی
+  const ambientLight = new THREE.AmbientLight(0x333333); // نور محیطی
+  scene.add(ambientLight);
+
+  const pointLight = new THREE.PointLight(0xffffff, 2, 500);
+  pointLight.position.set(0, 0, 0); // از مرکز (خورشید) می‌تابه
+  scene.add(pointLight);
+
+  // خورشید
+  const sunGeometry = new THREE.SphereGeometry(4, 32, 32);
+  const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 }); // نور داخلی خودش داره
+  const sun = new THREE.Mesh(sunGeometry, sunMaterial);
+  scene.add(sun);
+
+  // آرایه‌ی سیارات
+  const planets = [];
+
+  function createPlanet({ name, size, color, distance, speed }) {
+    const geometry = new THREE.SphereGeometry(size, 32, 32);
+    const material = new THREE.MeshStandardMaterial({ color });
+    const mesh = new THREE.Mesh(geometry, material);
+
+    // مدار
+    const orbit = new THREE.Object3D();
+    orbit.add(mesh);
+    scene.add(orbit);
+
+    mesh.position.x = distance;
+
+    // نمایش مدار بصری (حلقه)
+    const ringGeometry = new THREE.RingGeometry(distance - 0.05, distance + 0.05, 64);
+    const ringMaterial = new THREE.MeshBasicMaterial({ color: 0x444444, side: THREE.DoubleSide });
+    const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+    ring.rotation.x = Math.PI / 2;
+    scene.add(ring);
+
+    planets.push({
+      name,
+      mesh,
+      orbit,
+      angle: Math.random() * Math.PI * 2,
+      speed,
+      radius: distance
+    });
+  }
+
+  // اضافه کردن چند سیاره
+  createPlanet({ name: 'Mercury', size: 0.5, color: 0xaaaaaa, distance: 7, speed: 0.04 });
+  createPlanet({ name: 'Venus',   size: 0.9, color: 0xffcc66, distance: 10, speed: 0.015 });
+  createPlanet({ name: 'Earth',   size: 1.0, color: 0x3399ff, distance: 13, speed: 0.01 });
+  createPlanet({ name: 'Mars',    size: 0.7, color: 0xff3300, distance: 17, speed: 0.008 });
+  createPlanet({ name: 'Jupiter', size: 2.5, color: 0xff9966, distance: 23, speed: 0.004 });
+
+  // انیمیشن
+  function animate() {
+    requestAnimationFrame(animate);
+
+    planets.forEach(p => {
+      p.angle += p.speed;
+      const x = Math.cos(p.angle) * p.radius;
+      const z = Math.sin(p.angle) * p.radius;
+      p.mesh.position.set(x, 0, z);
+    });
+
+    controls.update();
+    renderer.render(scene, camera);
+  }
+
+  animate();
+
+  // واکنش به تغییر اندازه
+  window.addEventListener("resize", () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+</script>
+
+</body>
+</html>

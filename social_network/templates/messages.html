@@ -1,10 +1,20 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
-</head>
-<body>
-$END$
-</body>
-</html>
+{% extends "base.html" %}
+{% block title %}پیام‌های من{% endblock %}
+{% block content %}
+<h2>صندوق پیام‌ها</h2>
+
+{% if messages %}
+  <ul>
+    {% for msg in messages %}
+      <li>
+        <strong>از: <a href="{{ url_for('profile', username=msg.sender.username) }}">{{ msg.sender.username }}</a></strong> <br />
+        {{ msg.body }} <br />
+        <small>{{ msg.timestamp.strftime('%Y-%m-%d %H:%M') }}</small>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>هیچ پیامی دریافت نکرده‌اید.</p>
+{% endif %}
+
+{% endblock %}

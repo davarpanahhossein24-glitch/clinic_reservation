@@ -1,10 +1,25 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
-</head>
-<body>
-$END$
-</body>
-</html>
+{% extends "base.html" %}
+{% block title %}چت با {{ user.username }}{% endblock %}
+
+{% block content %}
+<h2>چت با {{ user.username }}</h2>
+
+<div style="border: 1px solid #ccc; height: 300px; overflow-y: scroll; padding: 10px;">
+  {% for msg in messages %}
+    <p>
+      <strong>{{ 'شما' if msg.sender == current_user else msg.sender.username }}:</strong>
+      {{ msg.body }}
+      <small style="color: gray;">{{ msg.timestamp.strftime('%Y-%m-%d %H:%M') }}</small>
+    </p>
+  {% endfor %}
+</div>
+
+<form method="POST">
+  {{ form.hidden_tag() }}
+  {{ form.body.label }}<br>
+  {{ form.body(rows=3) }}<br>
+  {{ form.submit() }}
+</form>
+
+<a href="{{ url_for('inbox') }}">بازگشت به صندوق پیام‌ها</a>
+{% endblock %}

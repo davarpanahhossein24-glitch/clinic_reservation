@@ -1,10 +1,38 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
-</head>
-<body>
-$END$
-</body>
-</html>
+{% extends "base.html" %}
+{% block title %}پست {{ post.id }}{% endblock %}
+{% block content %}
+<h2>پست توسط {{ post.author.username }}</h2>
+<p>{{ post.body }}</p>
+<p><small>{{ post.timestamp.strftime('%Y-%m-%d %H:%M') }}</small></p>
+
+<hr>
+<h3>کامنت‌ها</h3>
+{% if comments %}
+  <ul>
+    {% for comment in comments %}
+      <li>
+        <strong>{{ comment.user.username }}</strong>:
+        {{ comment.body }} <br />
+        <small>{{ comment.timestamp.strftime('%Y-%m-%d %H:%M') }}</small>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>هیچ نظری ثبت نشده است.</p>
+{% endif %}
+
+<hr>
+<h3>ثبت نظر جدید</h3>
+<form method="POST">
+  {{ form.hidden_tag() }}
+  <p>
+    {{ form.body.label }}<br>
+    {{ form.body(rows=3) }}
+    {% for error in form.body.errors %}
+      <span style="color:red;">{{ error }}</span>
+    {% endfor %}
+  </p>
+  <p>{{ form.submit() }}</p>
+</form>
+
+{% endblock %}

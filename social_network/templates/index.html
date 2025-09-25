@@ -1,10 +1,24 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
-</head>
-<body>
-$END$
-</body>
-</html>
+{% extends "base.html" %}
+{% block title %}خانه{% endblock %}
+{% block content %}
+<h2 class="mb-4">فید پست‌های دنبال شده</h2>
+
+<a href="{{ url_for('create_post') }}" class="btn btn-primary mb-3">پست جدید بنویس</a>
+
+{% if posts %}
+  <ul class="list-group">
+    {% for post in posts %}
+      <li class="list-group-item">
+        <strong><a href="{{ url_for('profile', username=post.author.username) }}">{{ post.author.username }}</a></strong>:
+        {{ post.body|e }} <br />
+        <small class="text-muted">{{ post.timestamp.strftime('%Y-%m-%d %H:%M') }}</small>
+        <br />
+        <a href="{{ url_for('like_post', post_id=post.id) }}" class="btn btn-sm btn-outline-primary">👍 {{ post.likes.count() }}</a>
+        <a href="{{ url_for('post_detail', post_id=post.id) }}" class="btn btn-sm btn-outline-secondary">💬 {{ post.comments.count() }}</a>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>شما هنوز کسی را دنبال نمی‌کنید یا پستی وجود ندارد.</p>
+{% endif %}
+{% endblock %}

@@ -4,6 +4,7 @@
 {% block content %}
 <div class="container mt-4">
   <h2 class="mb-4">🛒 سبد خرید</h2>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
   {% if items %}
   <div class="table-responsive">
@@ -31,10 +32,11 @@
           </td>
           <td>{{ item.product.name }}</td>
           <td>{{ item.quantity }}</td>
-          <td>{{ item.product.price }} تومان</td>
-          <td>{{ item.product.price * item.quantity }} تومان</td>
+          <td>{{ item.product.price|format_price }} تومان</td>
+          <td>{{ (item.product.price * item.quantity)|format_price }} تومان</td>
           <td>
             <form action="{{ url_for('remove_from_cart', item_id=item.id) }}" method="POST">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-sm btn-outline-danger">❌</button>
             </form>
           </td>
@@ -44,9 +46,10 @@
     </table>
   </div>
 <div class="text-end mt-4">
-    <h5>💰 جمع کل: <strong>{{ total }} تومان</strong></h5>
+    <h5>💰 جمع کل: <strong>{{ total|format_price }} تومان</strong></h5>
 
     <form action="{{ url_for('checkout_test') }}" method="POST" class="d-inline-block mt-2">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn btn-success">✅ پرداخت و نهایی‌سازی</button>
     </form>
   </div>

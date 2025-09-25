@@ -1,10 +1,16 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends "base.html" %}
+{% block title %}اعلان‌ها{% endblock %}
 
-</body>
-</html>
+{% block content %}
+<h2>اعلان‌های شما</h2>
+
+{% if notifications %}
+  <ul>
+    {% for n in notifications %}
+      <li>{{ n.message }} <small>({{ n.timestamp.strftime('%Y-%m-%d %H:%M') }})</small></li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>هیچ اعلانی ندارید.</p>
+{% endif %}
+{% endblock %}

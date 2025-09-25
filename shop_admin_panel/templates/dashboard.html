@@ -1,13 +1,99 @@
-<!--<a href="{{ url_for('view_cart') }}" class="btn btn-outline-secondary mb-4">🛒 مشاهده سبد خرید</a>-->
-
-<!-- templates/dashboard.html -->
 {% extends 'base.html' %}
 {% block title %}داشبورد{% endblock %}
 
 {% block content %}
 <h2>داشبورد مدیریت محصولات</h2>
+<style>
+    .product-card img {
+    object-fit: contain;
+    max-height: 200px;
+    width: 100%;
+    display: block;
+    margin: 0 auto;
+}
+
+</style>
+<style>
+        .product-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .card-img-top {
+            height: 200px;
+            object-fit: cover;
+        }
+        .bazaar-cart {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: #fb8c00;
+            border-radius: 12px;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            cursor: pointer;
+        }
+        .bazaar-cart::before {
+            content: "";
+            position: absolute;
+            top: 12px;
+            width: 40px;
+            height: 24px;
+            border: 3px solid #333;
+            border-radius: 3px;
+            background: none;
+        }
+        .bazaar-cart::after {
+            content: "";
+            position: absolute;
+            bottom: 10px;
+            width: 8px;
+            height: 8px;
+            background: #333;
+            border-radius: 50%;
+            box-shadow: 20px 0 0 #333;
+        }
+        .bazaar-cart .badge {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            background: #d32f2f;
+            color: white;
+            font-size: 12px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        body {
+            background: #f8f9fa;
+            font-family: "Vazir", sans-serif;
+        }
+        .card {
+            border-radius: 12px;
+        }
+        .btn {
+            border-radius: 8px;
+        }
+        body {
+    background: linear-gradient(to bottom right, #fdfbfb, #ebedee);
+    font-family: "Vazir", sans-serif;
+    direction: rtl;
+    color: #333;
+}
+</style>
+
 <div class="row mb-4">
-  <div class="col-md-3">
+  <div class="col-12 col-sm-6 col-md-3">
     <div class="card text-center bg-light shadow-sm">
       <div class="card-body">
         <h5 class="card-title">🔢 تعداد کل محصولات</h5>
@@ -15,7 +101,8 @@
       </div>
     </div>
   </div>
-  <div class="col-md-3">
+
+  <div class="col-12 col-sm-6 col-md-3">
     <div class="card text-center bg-light shadow-sm">
       <div class="card-body">
         <h5 class="card-title">🛒 تعداد سفارشات</h5>
@@ -23,7 +110,8 @@
       </div>
     </div>
   </div>
-  <div class="col-md-3">
+
+  <div class="col-12 col-sm-6 col-md-3">
     <div class="card text-center bg-light shadow-sm">
       <div class="card-body">
         <h5 class="card-title">👥 تعداد کاربران</h5>
@@ -31,7 +119,8 @@
       </div>
     </div>
   </div>
-  <div class="col-md-3">
+
+  <div class="col-12 col-sm-6 col-md-3">
     <div class="card text-center bg-light shadow-sm">
       <div class="card-body">
         <h5 class="card-title">💰 مجموع فروش</h5>
@@ -41,13 +130,15 @@
   </div>
 </div>
 
-<!-- فرم جستجو -->
-<form method="GET" class="row g-3 mb-4">
-    <div class="col-md-4">
+<!-- لینک سبد خرید -->
+<!--<a href="{{ url_for('view_cart') }}" class="btn btn-outline-secondary mb-4 d-inline-block">🛒 مشاهده سبد خرید</a>-->
+
+<form method="GET" action="{{ url_for('shop') }}" class="row g-3 mb-4">
+    <div class="col-12 col-md-4">
         <input type="text" name="q" class="form-control" placeholder="جستجوی محصول" value="{{ request.args.get('q', '') }}">
     </div>
 
-    <div class="col-md-4">
+    <div class="col-12 col-md-4">
         <select name="category" class="form-select">
             <option value="">همه دسته‌بندی‌ها</option>
             {% for cat in categories %}
@@ -56,12 +147,13 @@
         </select>
     </div>
 
-    <div class="col-md-4">
-        <button type="submit" class="btn btn-success">فیلتر</button>
-        <a href="{{ url_for('add_product') }}" class="btn btn-primary">افزودن محصول جدید</a>
+    <div class="col-12 col-md-4 d-flex gap-2">
+        <button type="submit" class="btn btn-success flex-grow-1">فیلتر</button>
+        <a href="{{ url_for('add_product') }}" class="btn btn-primary flex-grow-1">افزودن محصول جدید</a>
     </div>
 </form>
 
+<!-- محصولات -->
 <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3">
     {% if products %}
         {% for product in products %}
@@ -69,57 +161,39 @@
             <div class="card h-100 product-card">
                 {% if product.image %}
                 <a href="{{ url_for('product_detail', product_id=product.id) }}">
-    <img src="{{ url_for('uploaded_file', filename=product.image) }}" class="card-img-top" alt="{{ product.name }}">
-</a>
-
+                    <img src="{{ url_for('uploaded_file', filename=product.image) }}" class="card-img-top" alt="{{ product.name }}">
+                </a>
                 {% else %}
                 <img src="{{ url_for('static', filename='no-image.png') }}" class="card-img-top" alt="بدون تصویر">
                 {% endif %}
 
                 <div class="card-body">
                     <h5 class="card-title">
-    <a href="{{ url_for('product_detail', product_id=product.id) }}" class="text-decoration-none text-dark">
-        {{ product.name }}
-    </a>
-</h5>
+                        <a href="{{ url_for('product_detail', product_id=product.id) }}" class="text-decoration-none text-dark">
+                            {{ product.name }}
+                        </a>
+                    </h5>
+                    <span class="text-success fw-bold">{{ product.price|format_price }} تومان</span>
 
-                    <p class="card-text">قیمت: {{ product.price }} تومان</p>
                     <p class="card-text"><small class="text-muted">دسته‌بندی: {{ product.category }}</small></p>
                 </div>
-<!--                <img src="{{ url_for('uploaded_file', filename=product.image) }}" alt="{{ product.name }}" width="150">-->
 
+                <div class="card-footer d-grid gap-2">
+                    <a href="{{ url_for('edit_product', product_id=product.id) }}" class="btn btn-outline-warning btn-sm w-100">✏️ ویرایش</a>
 
-<!--                <div class="card-footer d-flex justify-content-between">-->
-<!--    <a href="{{ url_for('edit_product', product_id=product.id) }}" class="btn btn-warning btn-sm">ویرایش</a>-->
-
-<!--    <form action="{{ url_for('delete_product', product_id=product.id) }}" method="POST" onsubmit="return confirm('آیا مطمئنید می‌خواهید این محصول را حذف کنید؟');" class="me-2">-->
-<!--        <button type="submit" class="btn btn-danger btn-sm">حذف</button>-->
-<!--    </form>-->
-
-<!--    <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST">-->
-<!--        <button type="submit" class="btn btn-outline-primary btn-sm">افزودن به سبد</button>-->
-<!--    </form>-->
-<!--</div>-->
-<div class="card-footer d-grid gap-2">
-    <a href="{{ url_for('edit_product', product_id=product.id) }}" class="btn btn-outline-warning btn-sm w-100">✏️ ویرایش</a>
-
-    <form action="{{ url_for('delete_product', product_id=product.id) }}" method="POST"
-          onsubmit="return confirm('آیا مطمئنید می‌خواهید این محصول را حذف کنید؟');"
-          class="w-100">
-        <button type="submit" class="btn btn-outline-danger btn-sm w-100">🗑️ حذف</button>
-    </form>
-
-    <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST" class="w-100">
-        <button type="submit" class="btn btn-primary btn-sm w-100">➕ افزودن به سبد</button>
-    </form>
-</div>
-
-
-      </div>
+                    <form action="{{ url_for('delete_product', product_id=product.id) }}" method="POST"
+                          onsubmit="return confirm('آیا مطمئنید می‌خواهید این محصول را حذف کنید؟');"
+                          class="w-100">
+                        <button type="submit" class="btn btn-outline-danger btn-sm w-100">🗑️ حذف</button>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    </form>
+                </div>
+            </div>
         </div>
         {% endfor %}
     {% else %}
         <p>هیچ محصولی موجود نیست.</p>
     {% endif %}
 </div>
+
 {% endblock %}

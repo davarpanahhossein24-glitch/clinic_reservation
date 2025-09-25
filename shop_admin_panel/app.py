@@ -1,15 +1,14 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, send_from_directory
-from flask_sqlalchemy import SQLAlchemy
+from flask import Flask, render_template, request, redirect, url_for, flash, session, send_from_directory, abort, Response
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 from flask_migrate import Migrate
-from flask import abort
 from datetime import timedelta
 from datetime import datetime
 from flask_wtf import CSRFProtect
 from flask import jsonify
+from flask_sqlalchemy import SQLAlchemy
 
 # ---------- تنظیمات اولیه ----------
 app = Flask(__name__)
@@ -31,6 +30,7 @@ favorites = db.Table('favorites',
     db.Column('product_id', db.Integer, db.ForeignKey('product.id'))
 )
 
+
 # این خط خیلی مهمه
 login_manager.login_view = 'login'  # نام تابع (view function) صفحه ورود
 # ---------- مدل‌ها ----------
@@ -40,9 +40,13 @@ class Product(db.Model):
     price = db.Column(db.Float, nullable=False)
     category = db.Column(db.String(50))
     image = db.Column(db.String(200), nullable=True)
-    description = db.Column(db.Text, nullable=True)  # ✅ اضافه شد
-    expiration_date = db.Column(db.Date, nullable=True)  # ✅ تاریخ انقضا
-    stock = db.Column(db.Integer, default=0)  # ✅ موجودی انبار
+    description = db.Column(db.Text, nullable=True)
+    expiration_date = db.Column(db.Date, nullable=True)
+    stock = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # 👇 این رابطه باعث میشه توی Comment دسترسی به product داشته باشیم
+    # comments = db.relationship('Comment', backref='product', lazy=True)
 
 
 class Category(db.Model):
@@ -93,6 +97,20 @@ class Favorite(db.Model):
 
     product = db.relationship('Product')
 
+
+# class Comment(db.Model):
+#     id = db.Column(db.Integer, primary_key=True)
+#     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+#     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)  # این خط باید فعال باشه
+#     rating = db.Column(db.Integer, nullable=False)  # از 1 تا 5
+#     content = db.Column(db.Text, nullable=False)
+#     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+#
+#     user = db.relationship('User')  # فقط رابطه با کاربر نگه داشته شده
+#     # ❌ این خط باید حذف بشه:
+#     # product = db.relationship('Product')
+
+
 # ---------- بارگذاری کاربر ----------
 @login_manager.user_loader
 def load_user(user_id):
@@ -116,23 +134,30 @@ def dashboard():
     if category_filter:
         products_query = products_query.filter_by(category=category_filter)
 
-    # ✅ مرتب‌سازی
+    # مرتب‌سازی
     if sort == 'price_asc':
         products_query = products_query.order_by(Product.price.asc())
     elif sort == 'price_desc':
         products_query = products_query.order_by(Product.price.desc())
-    if current_user.role == 'admin':
+    else:
+        # اگر گزینه‌ای انتخاب نشده، به صورت پیش‌فرض از جدید به قدیم مرتب کن
+        products_query = products_query.order_by(Product.created_at.desc())
+
+    categories = Category.query.all()  # این خط رو اضافه کردم
+
+    if current_user.is_authenticated and current_user.role == 'admin':
         total_products = Product.query.count()
         total_users = User.query.count()
         total_orders = Order.query.count()
         total_income = db.session.query(db.func.sum(Order.total_price)).scalar() or 0
+        products = products_query.all()
         return render_template('dashboard.html', products=products, categories=categories,
                                total_products=total_products, total_users=total_users,
                                total_orders=total_orders, total_income=total_income)
 
     products = products_query.all()
-    categories = Category.query.all()
     return render_template('dashboard.html', products=products, categories=categories, sort=sort)
+
 
 
 @app.route('/')
@@ -147,6 +172,9 @@ def index():
 
 @app.route('/add_product', methods=['GET', 'POST'])
 def add_product():
+    if not is_admin():
+        abort(403)
+
     if request.method == 'POST':
         name = request.form.get('name')
         price = request.form.get('price')
@@ -179,8 +207,7 @@ def add_product():
             return redirect(url_for('dashboard'))
         else:
             flash('لطفاً همه فیلدها را کامل کنید.', 'danger')
-        if not is_admin():
-            abort(403)
+
     categories = [c.name for c in Category.query.all()]
     return render_template('add_product.html', categories=categories)
 
@@ -188,15 +215,15 @@ def add_product():
 @app.route('/edit/<int:product_id>', methods=['GET', 'POST'])
 def edit_product(product_id):
     product = Product.query.get_or_404(product_id)
-    categories = ['الکترونیکی', 'پوشاک', 'خوراکی', 'لوازم خانه']
+    categories = ['وسیله نقلیه', 'پوشاک', 'خوراکی', 'لوازم خانگی', 'الکترونیکی', 'دیجیتال', 'ورزشی']
 
     if request.method == 'POST':
         product.name = request.form['name']
         product.price = request.form['price']
         product.category = request.form['category']
 
-        image_file = request.files['image']
-        if image_file:
+        image_file = request.files.get('image')
+        if image_file and image_file.filename != '':
             image_filename = secure_filename(image_file.filename)
             image_path = os.path.join(app.config['UPLOAD_FOLDER'], image_filename)
             image_file.save(image_path)
@@ -225,7 +252,7 @@ def shop():
     category_filter = request.args.get('category', '')
     sort = request.args.get('sort', '')  # ✅ اضافه شد
 
-    products_query = Product.query
+    products_query = Product.query.order_by(Product.created_at.desc())  # 👈 جدیدترین‌ها بالا
     if q:
         products_query = products_query.filter(Product.name.contains(q))
     if category_filter:
@@ -236,6 +263,9 @@ def shop():
         products_query = products_query.order_by(Product.price.asc())
     elif sort == 'price_desc':
         products_query = products_query.order_by(Product.price.desc())
+    else:
+        # اگر گزینه‌ای انتخاب نشده، به صورت پیش‌فرض از جدید به قدیم مرتب کن
+        products_query = products_query.order_by(Product.created_at.desc())
 
     products = products_query.all()
     categories = Category.query.all()
@@ -301,13 +331,13 @@ def remove_from_cart(item_id):
     return redirect(url_for('view_cart'))
 
 
-@app.route('/checkout', methods=['POST'])
-@login_required
-def checkout1():
-    CartItem.query.delete()
-    db.session.commit()
-    flash('پرداخت با موفقیت انجام شد!', 'success')
-    return redirect(url_for('shop'))
+# @app.route('/checkout', methods=['POST'])
+# @login_required
+# def checkout1():
+#     CartItem.query.delete()
+#     db.session.commit()
+#     flash('پرداخت با موفقیت انجام شد!', 'success')
+#     return redirect(url_for('shop'))
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -335,7 +365,7 @@ def register():
         db.session.add(new_user)
         db.session.commit()
 
-        flash('ثبت‌نام با موفقیت انجام شد.', 'success')
+        flash('ثبت‌ نام با موفقیت انجام شد.', 'success')
         return redirect(url_for('login'))
 
     return render_template('register.html')
@@ -347,21 +377,35 @@ def register():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form['username'].strip()
-        password = request.form['password']
-        user = User.query.filter_by(username=username).first()
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
 
-        if user and check_password_hash(user.password, password):
-            login_user(user, remember=True)  # این خط تغییر کرد 👈
+        print(f"Login attempt: username={username}")
+
+        user = User.query.filter_by(username=username).first()
+        if not user:
+            print("User not found")
+            flash('نام کاربری یا رمز اشتباه است.', 'danger')
+            return redirect(url_for('login'))
+
+        if not password:
+            print("Empty password")
+            flash('رمز عبور را وارد کنید.', 'danger')
+            return redirect(url_for('login'))
+
+        if check_password_hash(user.password, password):
+            login_user(user, remember=True)
             flash('ورود موفقیت‌آمیز بود.', 'success')
             if user.role == 'admin':
                 return redirect(url_for('dashboard'))
             else:
                 return redirect(url_for('shop'))
         else:
+            print("Wrong password")
             flash('نام کاربری یا رمز اشتباه است.', 'danger')
 
     return render_template('login1.html')
+
 
 
 
@@ -381,6 +425,7 @@ def uploaded_file(filename):
 @app.route('/product/<int:product_id>')
 def product_detail(product_id):
     product = Product.query.get_or_404(product_id)
+    # حالا product.comments در قالب استفاده می‌شود
     return render_template('product_detail.html', product=product)
 
 def is_admin():
@@ -498,6 +543,75 @@ def favorite(product_id):
         db.session.commit()
         return jsonify({'status': 'added'})
 
+@app.route('/sitemap.xml', methods=['GET'])
+def sitemap():
+    sitemap_xml = """<?xml version="1.0" encoding="UTF-8"?>
+    <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+       <url>
+          <loc>https://my-flask-app-sfk9.onrender.com/</loc>
+          <lastmod>2025-08-22</lastmod>
+          <changefreq>weekly</changefreq>
+          <priority>1.0</priority>
+       </url>
+       <!-- بقیه URL ها -->
+    </urlset>"""
+    return Response(sitemap_xml, mimetype='application/xml')
+
+@app.template_filter('format_price')
+def format_price(value):
+    try:
+        return f"{int(value):,}"
+    except (ValueError, TypeError):
+        return value
+
+# @app.route('/product/<int:product_id>/add_comment', methods=['POST'])
+# @login_required
+# def add_comment(product_id):
+#     rating = request.form.get('rating', type=int)
+#     content = request.form.get('content', '').strip()
+#
+#     if not rating or rating < 1 or rating > 5 or not content:
+#         flash('لطفا امتیاز و نظر خود را به درستی وارد کنید.', 'danger')
+#         return redirect(url_for('product_detail', product_id=product_id))
+#
+#     comment = Comment(user_id=current_user.id, product_id=product_id, rating=rating, content=content)
+#     db.session.add(comment)
+#     db.session.commit()
+#
+#     flash('نظر شما ثبت شد. ممنون از بازخورد شما!', 'success')
+#     return redirect(url_for('product_detail', product_id=product_id))
+
+
+# @app.route('/comment/edit/<int:comment_id>', methods=['GET', 'POST'])
+# @login_required
+# def edit_comment(comment_id):
+#     comment = Comment.query.get_or_404(comment_id)
+#     if comment.user_id != current_user.id:
+#         abort(403)  # دسترسی غیرمجاز
+#
+#     if request.method == 'POST':
+#         content = request.form.get('content')
+#         rating = int(request.form.get('rating'))
+#         comment.content = content
+#         comment.rating = rating
+#         db.session.commit()
+#         flash('نظر شما با موفقیت ویرایش شد.', 'success')
+#         return redirect(url_for('some_page'))
+#
+#     return render_template('edit_comment.html', comment=comment)
+#
+#
+# @app.route('/comment/delete/<int:comment_id>', methods=['POST'])
+# @login_required
+# def delete_comment(comment_id):
+#     comment = Comment.query.get_or_404(comment_id)
+#     if comment.user_id != current_user.id:
+#         abort(403)  # دسترسی غیرمجاز
+#
+#     db.session.delete(comment)
+#     db.session.commit()
+#     flash('نظر شما حذف شد.', 'success')
+#     return redirect(url_for('some_page'))
 # ---------- اضافه کردن دسته‌بندی‌های پیش‌فرض ----------
 # در فایل init:
 ADMIN_USERNAME = 'admin'
@@ -507,7 +621,7 @@ with app.app_context():
     db.create_all()
 
     # دسته‌بندی‌های پیش‌فرض
-    default_categories = ['وسیله نقلیه', 'پوشاک', 'خوراکی', 'لوازم خانگی', 'الکترونیکی', 'دیجیتال']
+    default_categories = ['وسیله نقلیه', 'پوشاک', 'خوراکی', 'لوازم خانگی', 'الکترونیکی', 'دیجیتال', 'ورزشی']
     existing_categories = [cat.name for cat in Category.query.all()]
 
     for cat in default_categories:
@@ -528,5 +642,6 @@ with app.app_context():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(debug=True, host="0.0.0.0", port=port)
 

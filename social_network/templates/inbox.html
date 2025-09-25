@@ -1,10 +1,17 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
-</head>
-<body>
-$END$
-</body>
-</html>
+{% extends "base.html" %}
+{% block title %}صندوق پیام‌ها{% endblock %}
+
+{% block content %}
+<h2>صندوق پیام‌ها</h2>
+<ul>
+  {% for user in users %}
+    <li>
+      <a href="{{ url_for('chat', username=user.username) }}">
+        {{ user.username }}
+      </a>
+    </li>
+  {% else %}
+    <li>هنوز هیچ پیامی ندارید.</li>
+  {% endfor %}
+</ul>
+{% endblock %}
